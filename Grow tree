@@ -136,6 +136,22 @@ err_rate= numMisclass/length(label)
 [~,Posterior] = predict(Mdl,meas(idxVal,:),'SubTrees',[1 3]);
 Mdl.ClassNames
 
+%% [E,SE,Nleaf,BestLevel] = cvloss(tree)
+% E分类错误率 SE标准误差 Nleaf叶子个数 BestLevel树的最佳修剪级别
+load ionosphere
+tree = fitctree(X,Y);
+% [E,SE,Nleaf,BestLevel] = cvloss(tree)
+[E,SE,Nleaf,BestLevel] = cvloss(tree,'TreeSize','se','KFold' ,10)
+
+%% 寻找最佳剪枝
+load ionosphere
+Mdl = fitctree(X,Y);
+view(Mdl,'Mode','graph')
+rng(1); % For reproducibility
+m = max(Mdl.PruneList) - 1
+[E,~,~,bestLevel] = cvloss(Mdl,'SubTrees',0:m,'KFold',5)
+MdlPrune = prune(Mdl,'Level',bestLevel);
+view(MdlPrune,'Mode','graph')
 
 
 
