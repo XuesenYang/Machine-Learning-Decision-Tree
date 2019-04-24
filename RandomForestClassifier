@@ -1,7 +1,10 @@
+from sklearn import metrics
+import sys
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import make_moons, make_circles, make_classification
 from sklearn.neighbors import KNeighborsClassifier
@@ -9,8 +12,8 @@ from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.lda import LDA
-from sklearn.qda import QDA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA
 
 h = .02  # step size in the mesh
 
