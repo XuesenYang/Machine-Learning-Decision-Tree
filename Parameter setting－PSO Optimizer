@@ -1,0 +1,126 @@
+% Parameter setting for tree classification using PSO Optimizer 
+% 标准PSO算法
+% 在这个版本里面，改动的地方：加入了30次运行，每次运行都使用同一个初始化种群
+clc      %clc命令是清空历史窗口中的内容
+clear    %clear命令清除指令，变量
+close all%关闭所有的Figure窗口
+%--------第1步：设置PSO算法的参数------------%
+tic
+%使用这个脚本来生成初始化种群，生成以后会自动保存为‘datastruct.mat’的数据文件，
+%该数据文件能被PSO.m加载，以保证每次运行都是同一个初始种群（搜索起点都一致，降低随机性）
+load ionosphere
+nn=size(X,1);
+num=size(X,2);
+c = cvpartition(nn,'Kfold',10);
+pop.N=100;   %粒子群规模，通俗理解：多少种解的方案
+pop.D=3;    %粒子群维度，通俗理解：目标函数的自变量个数
+pop.T=100;   %最大迭代次数
+pop.c1=1.5;  %每个粒子的个体学习因子，加速度常数
+pop.c2=1.5;  %每个粒子的社会学习因子，加速度常数
+pop.w=0.8;   %惯性因子，通俗理解：对当前自身运动状态的信任
+pop.Xmax=num; %粒子的搜索上界，通俗理解：空间约束
+pop.Xmin=1;%粒子的搜索下界，通俗理解：空间约束
+pop.Vmax=10; %粒子的搜索速度上界，通俗理解：速度约束
+pop.Vmin=-10;%粒子的搜索速度下界，通俗理解：速度约束
+%-----------设置PSO算法完毕------------%
+
+%---------第2步：种群初始化------------%
+pop.x=rand(pop.N,pop.D)*(pop.Xmax-pop.Xmin)+pop.Xmin; % 种群位置初始化
+pop.v=rand(pop.N,pop.D)*(pop.Vmax-pop.Vmin)+pop.Vmin; % 种群速度初始化
+save('datastruct','pop')
+
+for run=1:1    %运行30次
+load('datastruct.mat')    %加载初始化的数据,不同的算法用同一个初始化种群，保证公平
+N=pop.N;   %粒子群规模，通俗理解：多少种解的方案
+D=pop.D;    %粒子群维度，通俗理解：目标函数的自变量个数
+T=pop.T;   %最大迭代次数
+c1=pop.c1;  %每个粒子的个体学习因子，加速度常数
+c2=pop.c2;  %每个粒子的社会学习因子，加速度常数
+w=pop.w;   %惯性因子，通俗理解：对当前自身运动状态的信任
+Xmax=pop.Xmax; %粒子的搜索上界，通俗理解：空间约束
+Xmin=pop.Xmin;%粒子的搜索下界，通俗理解：空间约束
+Vmax=pop.Vmax; %粒子的搜索速度上界，通俗理解：速度约束
+Vmin=pop.Vmin;%粒子的搜索速度下界，通俗理解：速度约束
+%-----------设置PSO算法完毕------------%
+
+%---------第2步：种群初始化------------%          
+x=pop.x; % 种群位置初始化
+v=pop.v; % 种群速度初始化
+p=x;
+pbest=ones(N,1);              % 预设置内存，pbest=个体历史最优
+%-----------种群初始化完毕-------------%
+
+%-----第3步：计算初始种群的函数值------%
+for i=1:N
+   temp=x(i,:);
+   a1=round(temp(1));
+   b1=round(temp(2));
+   c1=round(temp(3));
+   pbest(i)=kfoldLoss(fitctree(X,Y,'CVPartition',c,'MaxNumSplits',a1,'MinLeafSize',b1,'numvariablestosample',c1));   % 循环结构，一个一个来算
+end
+%-------计算初始种群的函数值完毕-------%
+
+%---第4步：计算初始种群的全局最优值----%
+g=ones(1,D);                  % 预设置内存，g=全局最优粒子的位置（方案）
+gbest=inf;                    % 预设全局最优的函数值为无穷大
+for i=1:N
+    if(pbest(i)<gbest)        % 判断语句，符合条件的话，就执行下面的内容，直到end结束
+        g=p(i,:);             % 更新全局最优粒子的位置
+        gbest=pbest(i);       % 更新全局最优粒子的函数值
+    end
+end
+%----计算初始种群的全局最优值完毕-----% 
+
+%--------第5步：种群学习更新---------%
+gb=ones(1,T);                 % 预设置内存，每次迭代的适应度值
+for i=1:T
+    for j=1:N
+        temp=x(j,:);
+        a1=round(temp(1));
+        b1=round(temp(2));
+        c1=round(temp(3));
+        f(j)=kfoldLoss(fitctree(X,Y,'CVPartition',c,'MaxNumSplits',a1,'MinLeafSize',b1,'numvariablestosample',c1)); 
+        if (f(j)<pbest(j))   % 判断是否要更新个体历史最优值
+            p(j,:)=x(j,:);            % 如果满足条件，把最新的个体的位置更新到个体历史最优值的位置
+            pbest(j)=f(j);   % 伴随着，个体历史最优值的函数值也要更新
+        end
+        if(pbest(j)<gbest)            % 判断是否要更新全局历史最优值
+            g=p(j,:);                 % 
+            gbest=pbest(j);           %
+        end
+        v(j,:)=w*v(j,:)+c1*rand*(p(j,:)-x(j,:))+c2*rand*(g-x(j,:));  % 粒子速度学习更新过程！参考PPT的公式
+        x(j,:)=x(j,:)+v(j,:);                                        % 粒子位置更新！
+        %-------------------假若速度或者位置超过约束，处理过程--------------%
+        for ii=1:D                                                   
+            if (v(j,ii)>Vmax|v(j,ii)<Vmin)
+                v(j,ii)=rand*(Vmax-Vmin)+Vmin;
+            end
+             if (x(j,ii)>Xmax|x(j,ii)<Xmin)
+                x(j,ii)=rand*(Xmax-Xmin)+Xmin;
+             end
+        end
+        %-------------------约束处理完毕-----------------------------------%
+    end
+    gb(i)=gbest;
+%    fprintf('当前的运行次数是: %d \t 当前的迭代次数是: %d \t 当前全局最优解是: %d \n',run,i,gbest)  
+end
+%----------------------结果输出，打印，可视化----------------------%
+gg(run,:)=g;                      %第run次运行的最好的粒子的位置（最好的方案）                        
+gbest(run)=gb(end);               %第run次运行的最好的粒子的函数值（最好的结果）
+ggb(run,:)=gb;                    %第run次运行时的所有T代最优值
+t=toc;
+fprintf('当前的运行次数是: %d \t 最优的目标函数值是: %d \t  最优粒子位置是: %s \n',run,gb(end),num2str(g))  %
+end
+reselt=mean(ggb);                 %取所有maxrun次运行的平均值
+t=toc;
+fprintf('30次运行的平均最优的目标函数值是: %d \t 30次运行的总时长为(s): %0.4f \t',reselt(end),t)
+figure                 
+plot(reselt)           % 画图 
+xlabel('迭代次数')      % 横坐标的标题
+ylabel('适应度值')      % 纵坐标的标题
+title('适应度进化曲线') % 图的主标题
+save('PSO','ggb','gbest','gg','t')    %数据保存
+
+                
+        
+        
