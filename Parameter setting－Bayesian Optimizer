@@ -1,0 +1,12 @@
+% Parameter setting for tree classification using Bayesian Optimizer 
+load ionosphere
+rng default
+num=size(X,2)
+ivar1 = optimizableVariable('ivar1',[1 num],'Type','integer');
+ivar2 = optimizableVariable('ivar2',[1 num],'Type','integer');
+ivar3 = optimizableVariable('ivar3',[1 num],'Type','integer');
+nn=size(X,1);
+c = cvpartition(nn,'Kfold',10);
+fun = @(x)kfoldLoss(fitctree(X,Y,'CVPartition',c,'MaxNumSplits',x.ivar1,'MinLeafSize',x.ivar2,'numvariablestosample',x.ivar3));
+results = bayesopt(fun,[ivar1,ivar2,ivar3],'Verbose',1,...
+    'AcquisitionFunctionName','expected-improvement-plus','MaxObjectiveEvaluations',100)
